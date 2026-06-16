@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WC2026 Tracker</title>
+<meta name="description" content="A simple tracker for the 2026 World Cup.">
+<meta name="theme-color" content="#0b3d2e">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+  :root {
+    --bg: #0b3d2e;
+    --fg: #ffffff;
+    --accent: #ffd60a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+  header { text-align: center; margin-bottom: 1.5rem; }
+  h1 { margin: 0; font-size: 1.8rem; }
+  p.tagline { opacity: 0.8; margin-top: 0.25rem; }
+  main {
+    width: 100%;
+    max-width: 480px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+  #status {
+    font-size: 0.9rem;
+    text-align: center;
+    color: var(--accent);
+    margin-top: 1rem;
+    min-height: 1.2em;
+  }
+  ul#matches { list-style: none; padding: 0; margin: 0; }
+  ul#matches li {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  ul#matches li:last-child { border-bottom: none; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>🏆 WC2026 Tracker</h1>
+    <p class="tagline">Your scoreboard for the 2026 World Cup</p>
+  </header>
+
+  <main>
+    <ul id="matches">
+      <li>Match data coming soon&hellip;</li>
+    </ul>
+  </main>
+
+  <p id="status"></p>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+          .then(() => {
+            document.getElementById('status').textContent = 'Ready to work offline';
+          })
+          .catch((err) => {
+            console.error('Service worker registration failed:', err);
+          });
+      });
+    }
+  </script>
+</body>
+</html>
