@@ -136,7 +136,112 @@
       });
   }
 
+  // ---- Rendering ------------------------------------------------------
+
+  function formatKickoff(date) {
+    try {
+      var fmt = new Intl.DateTimeFormat('en-AU', {
+        timeZone: MELBOURNE_TZ,
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+      return fmt.format(date) + ' (Melbourne)';
+    } catch (e) {
+      return date.toString();
+    }
+  }
+
+  // Returns YYYY-MM-DD for the given instant, in Melbourne local time.
+  function melbourneDateKey(date) {
+    var fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: MELBOURNE_TZ,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return fmt.format(date);
+  }
+
+  function splitTodayAndUpcoming(matches) {
+    var todayKey = melbourneDateKey(new Date());
+    var sorted = matches.slice().sort(function (a, b) {
+      return a.kickoff - b.kickoff;
+    });
+    var today = [];
+    var upcoming = [];
+    sorted.forEach(function (m) {
+      if (melbourneDateKey(m.kickoff) === todayKey) {
+        today.push(m);
+      } else if (m.kickoff.getTime() >= Date.now()) {
+        upcoming.push(m);
+      }
+    });
+    return { today: today, upcoming: upcoming };
+  }
+
+  function matchRow(m) {
+    var li = document.createElement('li');
+    li.className = 'match-row';
+
+    var time = document.createElement('span');
+    time.className = 'match-time';
+    time.textContent = formatKickoff(m.kickoff);
+
+    var teams = document.createElement('span');
+    teams.className = 'match-teams';
+    teams.textContent = m.team1 + ' vs ' + m.team2;
+
+    var meta = document.createElement('span');
+    meta.className = 'match-meta';
+    meta.textContent = [m.group, m.venue].filter(Boolean).join(' \u00B7 ');
+
+    li.appendChild(time);
+    li.appendChild(teams);
+    li.appendChild(meta);
+    return li;
+  }
+
+  function renderList(listEl, matches, emptyText) {
+    listEl.innerHTML = '';
+    if (!matches.length) {
+      var li = document.createElement('li');
+      li.className = 'match-empty';
+      li.textContent = emptyText;
+      listEl.appendChild(li);
+      return;
+    }
+    matches.forEach(function (m) {
+      listEl.appendChild(matchRow(m));
+    });
+  }
+
+  function renderSchedule(result) {
+    var todayList = document.getElementById('today-matches');
+    var upcomingList = document.getElementById('upcoming-matches');
+    var status = document.getElementById('status');
+    if (!todayList || !upcomingList) return;
+
+    var split = splitTodayAndUpcoming(result.matches);
+    renderList(todayList, split.today, 'No matches today.');
+    renderList(upcomingList, split.upcoming, 'No upcoming matches found.');
+
+    if (status) {
+      if (result.source === 'cache') {
+        status.textContent = 'Showing cached schedule from ' + new Date(result.savedAt).toLocaleString() + ' (offline)';
+      } else {
+        status.textContent = 'Schedule updated \u00B7 source: ' + result.source;
+      }
+    }
+  }
+
   window.WC2026 = window.WC2026 || {};
   window.WC2026.fetchMatches = fetchMatches;
+  window.WC2026.renderSchedule = renderSchedule;
+  window.WC2026.splitTodayAndUpcoming = splitTodayAndUpcoming;
+  window.WC2026.formatKickoff = formatKickoff;
   window.WC2026.MELBOURNE_TZ = MELBOURNE_TZ;
 })();
