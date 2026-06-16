@@ -238,6 +238,40 @@
     }
   }
 
+  // ---- Init + manual refresh --------------------------------------------
+
+  function init() {
+    var status = document.getElementById('status');
+    if (status) status.textContent = 'Loading schedule\u2026';
+    fetchMatches()
+      .then(renderSchedule)
+      .catch(function (err) {
+        console.error('Could not load schedule:', err);
+        if (status) status.textContent = 'Unable to load schedule. Check your connection.';
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    init();
+    var refreshBtn = document.getElementById('refresh-btn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', function () {
+        refreshBtn.disabled = true;
+        var status = document.getElementById('status');
+        if (status) status.textContent = 'Refreshing\u2026';
+        fetchMatches()
+          .then(renderSchedule)
+          .catch(function (err) {
+            console.error('Refresh failed:', err);
+            if (status) status.textContent = 'Refresh failed. Showing last known schedule.';
+          })
+          .then(function () {
+            refreshBtn.disabled = false;
+          });
+      });
+    }
+  });
+
   window.WC2026 = window.WC2026 || {};
   window.WC2026.fetchMatches = fetchMatches;
   window.WC2026.renderSchedule = renderSchedule;
