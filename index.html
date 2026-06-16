@@ -14,6 +14,8 @@
     --bg: #0b3d2e;
     --fg: #ffffff;
     --accent: #ffd60a;
+    --card: rgba(255,255,255,0.06);
+    --border: rgba(255,255,255,0.1);
   }
   * { box-sizing: border-box; }
   body {
@@ -33,23 +35,60 @@
   main {
     width: 100%;
     max-width: 480px;
-    background: rgba(255,255,255,0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .schedule-section {
+    background: var(--card);
     border-radius: 12px;
     padding: 1.25rem;
   }
-  #status {
+  .section-head { margin-bottom: 0.5rem; }
+  .section-head h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--accent);
+  }
+  ul.match-list { list-style: none; padding: 0; margin: 0; }
+  ul.match-list li.match-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  ul.match-list li.match-row:last-child { border-bottom: none; }
+  .match-time { font-size: 0.8rem; opacity: 0.8; }
+  .match-teams { font-weight: 600; }
+  .match-meta { font-size: 0.8rem; opacity: 0.7; }
+  li.match-empty {
+    padding: 0.75rem 0;
+    font-style: italic;
+    opacity: 0.7;
+  }
+  #refresh-btn {
+    width: 100%;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #0b3d2e;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  #refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  #status, #sw-status {
     font-size: 0.9rem;
     text-align: center;
     color: var(--accent);
-    margin-top: 1rem;
+    margin: 0.5rem 0 0;
     min-height: 1.2em;
   }
-  ul#matches { list-style: none; padding: 0; margin: 0; }
-  ul#matches li {
-    padding: 0.75rem 0;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-  }
-  ul#matches li:last-child { border-bottom: none; }
 </style>
 </head>
 <body>
@@ -59,19 +98,38 @@
   </header>
 
   <main>
-    <ul id="matches">
-      <li>Match data coming soon&hellip;</li>
-    </ul>
+    <section class="schedule-section">
+      <div class="section-head">
+        <h2>Today</h2>
+      </div>
+      <ul id="today-matches" class="match-list">
+        <li class="match-empty">Loading&hellip;</li>
+      </ul>
+    </section>
+
+    <section class="schedule-section">
+      <div class="section-head">
+        <h2>Upcoming</h2>
+      </div>
+      <ul id="upcoming-matches" class="match-list">
+        <li class="match-empty">Loading&hellip;</li>
+      </ul>
+    </section>
+
+    <button id="refresh-btn" type="button">Refresh schedule</button>
   </main>
 
-  <p id="status"></p>
+  <p id="status">Loading schedule&hellip;</p>
+  <p id="sw-status"></p>
 
+  <script src="app.js" defer></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('service-worker.js')
           .then(() => {
-            document.getElementById('status').textContent = 'Ready to work offline';
+            const el = document.getElementById('sw-status');
+            if (el) el.textContent = 'Ready to work offline';
           })
           .catch((err) => {
             console.error('Service worker registration failed:', err);
