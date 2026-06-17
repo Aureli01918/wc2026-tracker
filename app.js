@@ -408,7 +408,7 @@
   }
 
   function renderList(listEl, matches, emptyText, rowFn) {
-    listEl.innerHTL = '';
+    listEl.innerHTML = '';
     if (!matches.length) {
       var li = document.createElement('li');
       li.className = 'match-empty';
