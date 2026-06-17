@@ -1,9 +1,10 @@
-const CACHE_NAME = 'wc2026-tracker-v2';
+const CACHE_NAME = 'wc2026-tracker-v3';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
   './app.js',
+  './flags.js',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];
