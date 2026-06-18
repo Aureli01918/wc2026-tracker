@@ -1,0 +1,9 @@
+{
+  "name": "wc2026-tracker-notify",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Server-side push notification sender for WC2026 match results.",
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}
