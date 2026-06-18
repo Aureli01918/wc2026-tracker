@@ -1,3 +1,28 @@
 {
-  "notified": {}
+  "notified": {
+    "2026-06-11|Mexico|South Africa": true,
+    "2026-06-11|South Korea|Czech Republic": true,
+    "2026-06-12|Canada|Bosnia & Herzegovina": true,
+    "2026-06-13|Qatar|Switzerland": true,
+    "2026-06-13|Brazil|Morocco": true,
+    "2026-06-13|Haiti|Scotland": true,
+    "2026-06-12|USA|Paraguay": true,
+    "2026-06-13|Australia|Turkey": true,
+    "2026-06-14|Germany|Curaçao": true,
+    "2026-06-14|Ivory Coast|Ecuador": true,
+    "2026-06-14|Netherlands|Japan": true,
+    "2026-06-14|Sweden|Tunisia": true,
+    "2026-06-15|Belgium|Egypt": true,
+    "2026-06-15|Iran|New Zealand": true,
+    "2026-06-15|Spain|Cape Verde": true,
+    "2026-06-15|Saudi Arabia|Uruguay": true,
+    "2026-06-16|France|Senegal": true,
+    "2026-06-16|Iraq|Norway": true,
+    "2026-06-16|Argentina|Algeria": true,
+    "2026-06-16|Austria|Jordan": true,
+    "2026-06-17|Portugal|DR Congo": true,
+    "2026-06-17|Uzbekistan|Colombia": true,
+    "2026-06-17|England|Croatia": true,
+    "2026-06-17|Ghana|Panama": true
+  }
 }
