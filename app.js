@@ -627,13 +627,11 @@ function renderList(listEl, matches, emptyText, rowFn) {
     var upcomingList = document.getElementById('upcoming-matches');
     var resultsList = document.getElementById('results-matches');
     var status = document.getElementById('status');
-    if (!todayList || !upcomingList) return;
-
     var b = bucketMatches(result.matches);
 
     if (playingList) renderList(playingList, b.playingNow, 'No matches in progress.', playingNowRow);
-    renderList(todayList, b.today, 'No matches today.');
-    renderList(upcomingList, b.upcoming, 'No upcoming matches found.');
+    if (todayList) renderList(todayList, b.today, 'No matches today.');
+    if (upcomingList) renderList(upcomingList, b.upcoming, 'No upcoming matches found.');
     if (resultsList) renderList(resultsList, b.results, 'No results yet.', resultRow);
 
     dayBrowserState.matches = result.matches;
