@@ -254,6 +254,81 @@
     return { today: b.today, upcoming: b.upcoming };
   }
 
+  // ---- Day-by-day browser: date range + grouping + status -------------
+
+  var TOURNAMENT_START_KEY = '2026-06-11';
+  var TOURNAMENT_END_KEY = '2026-07-19';
+
+  function pad2(n) {
+    return n < 10 ? '0' + n : String(n);
+  }
+
+  // Builds the full list of Melbourne-calendar-date keys spanning the
+  // tournament, inclusive: ["2026-06-11", "2026-06-12", ..., "2026-07-19"].
+  function buildTournamentDates() {
+    var startParts = TOURNAMENT_START_KEY.split('-');
+    var endParts = TOURNAMENT_END_KEY.split('-');
+    var cursor = Date.UTC(parseInt(startParts[0], 10), parseInt(startParts[1], 10) - 1, parseInt(startParts[2], 10));
+    var end = Date.UTC(parseInt(endParts[0], 10), parseInt(endParts[1], 10) - 1, parseInt(endParts[2], 10));
+    var dates = [];
+    while (cursor <= end) {
+      var d = new Date(cursor);
+      dates.push(d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate()));
+      cursor += 24 * 60 * 60 * 1000;
+    }
+    return dates;
+  }
+
+  // Clamps an arbitrary date key into the tournament's date range, snapping
+  // to the nearest bound when it falls outside (e.g. "today" before/after
+  // the tournament still lands on a valid, navigable day).
+  function clampDateKey(key, dates) {
+    if (!dates || !dates.length) return key;
+    if (dates.indexOf(key) !== -1) return key;
+    if (key < dates[0]) return dates[0];
+    if (key > dates[dates.length - 1]) return dates[dates.length - 1];
+    return dates[0];
+  }
+
+  // Groups matches by Melbourne-LOCAL calendar date: kickoff is converted to
+  // Melbourne time first via melbourneDateKey(), then grouped -- never by the
+  // feed's raw `date` field, which may reflect a different timezone/day.
+  function groupMatchesByMelbourneDate(matches) {
+    var map = {};
+    matches.forEach(function (m) {
+      var key = melbourneDateKey(m.kickoff);
+      if (!map[key]) map[key] = [];
+      map[key].push(m);
+    });
+    Object.keys(map).forEach(function (key) {
+      map[key].sort(function (a, b) { return a.kickoff - b.kickoff; });
+    });
+    return map;
+  }
+
+  // Human-readable heading for a date key, e.g. "Thursday, 11 June 2026".
+  function dateKeyToLabel(dateKey) {
+    var parts = dateKey.split('-');
+    // Noon UTC on the target date is still the same calendar day in
+    // Melbourne (UTC+10/+11) regardless of DST, so this is safe.
+    var d = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 12, 0, 0));
+    try {
+      var fmt = new Intl.DateTimeFormat('en-AU', {
+        timeZone: MELBOURNE_TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+      });
+      return fmt.format(d);
+    } catch (e) {
+      return dateKey;
+    }
+  }
+
+  // Per-match status within the day browser: 'finished' | 'playing' | 'upcoming'.
+  function dayMatchStatus(m) {
+    if (hasFinalScore(m)) return 'finished';
+    if (m.kickoff.getTime() <= Date.now()) return 'playing';
+    return 'upcoming';
+  }
+
   function flagSpan(name) {
     var span = document.createElement('span');
     span.className = 'flag';
@@ -407,6 +482,16 @@
     return li;
   }
 
+  // Picks the right row renderer for a single day's match based on its
+  // status (finished / playing / upcoming) -- reuses the same row builders
+  // as the existing Results/Playing-now/Today-Upcoming sections.
+  function dayMatchRow(m) {
+    var status = dayMatchStatus(m);
+    if (status === 'finished') return resultRow(m);
+    if (status === 'playing') return playingNowRow(m);
+    return matchRow(m);
+  }
+
   function renderList(listEl, matches, emptyText, rowFn) {
     listEl.innerHTML = '';
     if (!matches.length) {
@@ -488,4 +573,9 @@
   window.WC2026.scorelineText = scorelineText;
   window.WC2026.goalLineText = goalLineText;
   window.WC2026.MELBOURNE_TZ = MELBOURNE_TZ;
+  window.WC2026.buildTournamentDates = buildTournamentDates;
+  window.WC2026.clampDateKey = clampDateKey;
+  window.WC2026.groupMatchesByMelbourneDate = groupMatchesByMelbourneDate;
+  window.WC2026.dateKeyToLabel = dateKeyToLabel;
+  window.WC2026.dayMatchStatus = dayMatchStatus;
 })();
