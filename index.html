@@ -154,6 +154,40 @@
     margin: 0.5rem 0 0;
     min-height: 1.2em;
   }
+
+  /* Day browser */
+  .day-browser { display: flex; flex-direction: column; gap: 0.85rem; }
+
+  .quick-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .quick-filter-btn {
+    flex: 1 1 auto;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255,255,255,0.08);
+    color: var(--fg);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .quick-filter-btn:disabled { opacity: 0.45; cursor: default; }
+
+  .day-nav { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .day-nav-btn {
+    flex-shrink: 0;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: none;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #0b3d2e;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .day-nav-btn:disabled { opacity: 0.4; cursor: default; }
+  #day-label { margin: 0; font-size: 1rem; text-align: center; color: var(--accent); flex: 1; }
 </style>
 </head>
 <body>
@@ -163,38 +197,21 @@
   </header>
 
   <main>
-    <section class="schedule-section">
-      <div class="section-head">
-        <h2>Playing now</h2>
+    <section class="schedule-section day-browser" id="day-browser">
+      <div class="quick-filters">
+        <button id="quick-today-btn" type="button" class="quick-filter-btn">Today</button>
+        <button id="quick-live-btn" type="button" class="quick-filter-btn" disabled>Live now (0)</button>
+        <button id="quick-next-btn" type="button" class="quick-filter-btn" disabled>Next match</button>
+        <button id="quick-latest-btn" type="button" class="quick-filter-btn" disabled>Latest result</button>
       </div>
-      <ul id="playing-matches" class="match-list">
-        <li class="match-empty">Loading&hellip;</li>
-      </ul>
-    </section>
 
-    <section class="schedule-section">
-      <div class="section-head">
-        <h2>Today</h2>
+      <div class="day-nav">
+        <button id="day-prev-btn" type="button" class="day-nav-btn" aria-label="Previous day">&larr;</button>
+        <h2 id="day-label">Loading&hellip;</h2>
+        <button id="day-next-btn" type="button" class="day-nav-btn" aria-label="Next day">&rarr;</button>
       </div>
-      <ul id="today-matches" class="match-list">
-        <li class="match-empty">Loading&hellip;</li>
-      </ul>
-    </section>
 
-    <section class="schedule-section">
-      <div class="section-head">
-        <h2>Upcoming</h2>
-      </div>
-      <ul id="upcoming-matches" class="match-list">
-        <li class="match-empty">Loading&hellip;</li>
-      </ul>
-    </section>
-
-    <section class="schedule-section">
-      <div class="section-head">
-        <h2>Results</h2>
-      </div>
-      <ul id="results-matches" class="match-list">
+      <ul id="day-matches" class="match-list">
         <li class="match-empty">Loading&hellip;</li>
       </ul>
     </section>
