@@ -188,6 +188,33 @@
   }
   .day-nav-btn:disabled { opacity: 0.4; cursor: default; }
   #day-label { margin: 0; font-size: 1rem; text-align: center; color: var(--accent); flex: 1; }
+
+  /* Notifications */
+  .notify-section { display: flex; flex-direction: column; gap: 0.6rem; }
+  .notify-btn, .copy-btn {
+    padding: 0.65rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #0b3d2e;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .copy-btn { background: rgba(255,255,255,0.12); color: var(--fg); border: 1px solid var(--border); }
+  #notify-status { font-size: 0.85rem; opacity: 0.85; margin: 0; min-height: 1.2em; }
+  .subscription-display { display: flex; flex-direction: column; gap: 0.5rem; }
+  .subscription-textarea {
+    width: 100%;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    background: rgba(0,0,0,0.25);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.6rem;
+    resize: vertical;
+  }
 </style>
 </head>
 <body>
@@ -217,6 +244,16 @@
     </section>
 
     <button id="refresh-btn" type="button">Refresh schedule</button>
+
+    <section class="schedule-section notify-section" id="notify-section">
+      <div class="section-head"><h2>Notifications</h2></div>
+      <button id="enable-notifications-btn" type="button" class="notify-btn">Enable notifications</button>
+      <p id="notify-status"></p>
+      <div id="subscription-display" class="subscription-display" hidden>
+        <textarea id="subscription-json" class="subscription-textarea" readonly rows="6"></textarea>
+        <button id="copy-subscription-btn" type="button" class="copy-btn">Copy subscription JSON</button>
+      </div>
+    </section>
   </main>
 
   <p id="status">Loading schedule&hellip;</p>
