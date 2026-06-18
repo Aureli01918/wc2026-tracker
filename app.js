@@ -492,7 +492,122 @@
     return matchRow(m);
   }
 
-  function renderList(listEl, matches, emptyText, rowFn) {
+    // ---- Day-by-day browser: navigator + quick-filter wiring ------------
+
+  // Tracks the matches from the most recent fetch/refresh and the
+  // currently-selected day, so prev/next/quick-filter navigation can
+  // re-render instantly without re-fetching.
+  var dayBrowserState = { matches: [], selectedKey: null };
+
+  // Shifts a YYYY-MM-DD key by `delta` days using UTC arithmetic (the key
+  // is just a calendar date, so this avoids any local-timezone/DST drift).
+  function addDaysToKey(key, delta) {
+    var parts = key.split('-');
+    var d = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
+    d.setUTCDate(d.getUTCDate() + delta);
+    return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate());
+  }
+
+  // Renders the day browser (heading, prev/next disabled state, match
+  // list) for `dateKey` using `matches`. No-ops if the day-browser markup
+  // isn't present on the page yet.
+  function renderDayBrowser(dateKey, matches) {
+    var dayLabel = document.getElementById('day-label');
+    var dayList = document.getElementById('day-matches');
+    var prevBtn = document.getElementById('day-prev-btn');
+    var nextBtn = document.getElementById('day-next-btn');
+    if (!dayLabel || !dayList) return;
+
+    var dates = buildTournamentDates();
+    var key = clampDateKey(dateKey, dates);
+    dayBrowserState.selectedKey = key;
+
+    dayLabel.textContent = dateKeyToLabel(key);
+
+    var grouped = groupMatchesByMelbourneDate(matches);
+    var dayMatches = grouped[key] || [];
+    renderList(dayList, dayMatches, 'No matches — rest day.', dayMatchRow);
+
+    if (prevBtn) prevBtn.disabled = (key === dates[0]);
+    if (nextBtn) nextBtn.disabled = (key === dates[dates.length - 1]);
+  }
+
+  // Navigates the day browser to `dateKey` (clamped into the tournament
+  // range) and re-renders from the last-fetched match list.
+  function goToDate(dateKey) {
+    renderDayBrowser(dateKey, dayBrowserState.matches);
+  }
+
+  function goToRelativeDay(delta) {
+    var current = dayBrowserState.selectedKey || melbourneDateKey(new Date());
+    goToDate(addDaysToKey(current, delta));
+  }
+
+  // Updates quick-filter button labels/enabled-state (e.g. live count).
+  // No-ops for any button not present on the page yet.
+  function updateQuickFilters(matches) {
+    var b = bucketMatches(matches);
+
+    var liveBtn = document.getElementById('quick-live-btn');
+    if (liveBtn) {
+      liveBtn.textContent = 'Live now (' + b.playingNow.length + ')';
+      liveBtn.disabled = !b.playingNow.length;
+    }
+
+    var nextMatchBtn = document.getElementById('quick-next-btn');
+    if (nextMatchBtn) {
+      var upcomingAll = b.today.concat(b.upcoming);
+      nextMatchBtn.disabled = !upcomingAll.length;
+    }
+
+    var latestBtn = document.getElementById('quick-latest-btn');
+    if (latestBtn) {
+      latestBtn.disabled = !b.results.length;
+    }
+  }
+
+  // Wires the prev/next day-navigator buttons and the four quick-filter
+  // buttons (Today / Live now / Next match / Latest result). Safe to call
+  // before the markup exists -- each handler is only attached if its
+  // element is found.
+  function wireDayBrowser() {
+    var prevBtn = document.getElementById('day-prev-btn');
+    var nextBtn = document.getElementById('day-next-btn');
+    var todayBtn = document.getElementById('quick-today-btn');
+    var liveBtn = document.getElementById('quick-live-btn');
+    var nextMatchBtn = document.getElementById('quick-next-btn');
+    var latestBtn = document.getElementById('quick-latest-btn');
+
+    if (prevBtn) prevBtn.addEventListener('click', function () { goToRelativeDay(-1); });
+    if (nextBtn) nextBtn.addEventListener('click', function () { goToRelativeDay(1); });
+
+    if (todayBtn) {
+      todayBtn.addEventListener('click', function () {
+        goToDate(melbourneDateKey(new Date()));
+      });
+    }
+    if (liveBtn) {
+      liveBtn.addEventListener('click', function () {
+        var b = bucketMatches(dayBrowserState.matches);
+        if (b.playingNow.length) goToDate(melbourneDateKey(b.playingNow[0].kickoff));
+      });
+    }
+    if (nextMatchBtn) {
+      nextMatchBtn.addEventListener('click', function () {
+        var b = bucketMatches(dayBrowserState.matches);
+        var upcomingAll = b.today.concat(b.upcoming).sort(function (a, c) { return a.kickoff - c.kickoff; });
+        if (upcomingAll.length) goToDate(melbourneDateKey(upcomingAll[0].kickoff));
+      });
+    }
+    if (latestBtn) {
+      latestBtn.addEventListener('click', function () {
+        var b = bucketMatches(dayBrowserState.matches);
+        if (b.results.length) goToDate(melbourneDateKey(b.results[0].kickoff));
+      });
+    }
+  }
+
+function renderList(listEl, matches, emptyText, rowFn) {
     listEl.innerHTML = '';
     if (!matches.length) {
       var li = document.createElement('li');
@@ -521,6 +636,13 @@
     renderList(upcomingList, b.upcoming, 'No upcoming matches found.');
     if (resultsList) renderList(resultsList, b.results, 'No results yet.', resultRow);
 
+    dayBrowserState.matches = result.matches;
+    if (!dayBrowserState.selectedKey) {
+      dayBrowserState.selectedKey = clampDateKey(melbourneDateKey(new Date()), buildTournamentDates());
+    }
+    renderDayBrowser(dayBrowserState.selectedKey, result.matches);
+    updateQuickFilters(result.matches);
+
     if (status) {
       if (result.source === 'cache') {
         status.textContent = 'Showing cached schedule from ' + new Date(result.savedAt).toLocaleString() + ' (offline)';
@@ -545,6 +667,7 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     init();
+    wireDayBrowser();
     var refreshBtn = document.getElementById('refresh-btn');
     if (refreshBtn) {
       refreshBtn.addEventListener('click', function () {
@@ -578,4 +701,10 @@
   window.WC2026.groupMatchesByMelbourneDate = groupMatchesByMelbourneDate;
   window.WC2026.dateKeyToLabel = dateKeyToLabel;
   window.WC2026.dayMatchStatus = dayMatchStatus;
+  window.WC2026.addDaysToKey = addDaysToKey;
+  window.WC2026.renderDayBrowser = renderDayBrowser;
+  window.WC2026.goToDate = goToDate;
+  window.WC2026.goToRelativeDay = goToRelativeDay;
+  window.WC2026.updateQuickFilters = updateQuickFilters;
+  window.WC2026.wireDayBrowser = wireDayBrowser;
 })();
