@@ -5,15 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>WC2026 Tracker</title>
 <meta name="description" content="A simple tracker for the 2026 World Cup.">
-<meta name="theme-color" content="#0b3d2e">
+<meta name="theme-color" content="#082b20">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <style>
 :root {
-  --bg: #0b3d2e;
+  --bg: #082b20;
+  --bg-soft: #0d3a2a;
   --fg: #ffffff;
-  --accent: #ffd60a;
+  --accent: #d4af37;
+  --accent-soft: #e6c768;
   --card: rgba(255,255,255,0.06);
   --border: rgba(255,255,255,0.1);
   --live: #ff3b30;
@@ -22,7 +24,7 @@
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: var(--bg);
+  background: radial-gradient(ellipse at top, var(--bg-soft) 0%, var(--bg) 55%);
   color: var(--fg);
   min-height: 100vh;
   display: flex;
@@ -31,7 +33,12 @@ body {
   padding: 2rem 1rem;
 }
 header { text-align: center; margin-bottom: 1.5rem; }
-h1 { margin: 0; font-size: 1.8rem; }
+h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 16px rgba(212,175,55,0.3);
+}
 p.tagline { opacity: 0.8; margin-top: 0.25rem; }
 main {
   width: 100%;
@@ -42,8 +49,10 @@ main {
 }
 .schedule-section {
   background: var(--card);
-  border-radius: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
   padding: 1.25rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.28);
 }
 .section-head { margin-bottom: 0.5rem; }
 .section-head h2 {
@@ -138,11 +147,14 @@ li.playing-row .live-badge {
   border: none;
   border-radius: 8px;
   background: var(--accent);
-  color: #0b3d2e;
+  color: var(--bg);
   font-weight: 600;
   font-size: 0.95rem;
   cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
 }
+#refresh-btn:hover:not(:disabled) { filter: brightness(1.08); }
+#refresh-btn:active:not(:disabled) { transform: scale(0.98); }
 #refresh-btn:disabled {
   opacity: 0.6;
   cursor: default;
@@ -200,7 +212,10 @@ li.playing-row .live-badge {
   font-weight: 600;
   font-size: 0.85rem;
   cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
 }
+.retry-btn:hover { background: rgba(255,255,255,0.18); }
+.retry-btn:active { transform: scale(0.97); }
 
 /* Day browser */
 .day-browser { display: flex; flex-direction: column; gap: 0.85rem; }
@@ -217,7 +232,10 @@ li.playing-row .live-badge {
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  transition: background 0.15s ease, transform 0.1s ease;
 }
+.quick-filter-btn:hover:not(:disabled) { background: rgba(255,255,255,0.15); }
+.quick-filter-btn:active:not(:disabled) { transform: scale(0.97); }
 .quick-filter-btn:disabled { opacity: 0.45; cursor: default; }
 
 .day-nav { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
@@ -228,11 +246,14 @@ li.playing-row .live-badge {
   border: none;
   border-radius: 999px;
   background: var(--accent);
-  color: #0b3d2e;
+  color: var(--bg);
   font-size: 1.1rem;
   font-weight: 700;
   cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease;
 }
+.day-nav-btn:hover:not(:disabled) { filter: brightness(1.08); }
+.day-nav-btn:active:not(:disabled) { transform: scale(0.95); }
 .day-nav-btn:disabled { opacity: 0.4; cursor: default; }
 #day-label { margin: 0; font-size: 1rem; text-align: center; color: var(--accent); flex: 1; }
 
@@ -243,11 +264,14 @@ li.playing-row .live-badge {
   border: none;
   border-radius: 8px;
   background: var(--accent);
-  color: #0b3d2e;
+  color: var(--bg);
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease;
 }
+.notify-btn:hover, .copy-btn:hover { filter: brightness(1.08); }
+.notify-btn:active, .copy-btn:active { transform: scale(0.98); }
 .copy-btn { background: rgba(255,255,255,0.12); color: var(--fg); border: 1px solid var(--border); }
 #notify-status { font-size: 0.85rem; opacity: 0.85; margin: 0; min-height: 1.2em; }
 .subscription-display { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -323,7 +347,7 @@ li.playing-row .live-badge {
 <script>
 if ('serviceWorker' in navigator) {
 window.addEventListener('load', () => {
-navigator.serviceWorker.register('service-worker.js')
+navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' })
 .then(() => {
 const el = document.getElementById('sw-status');
 if (el) el.textContent = 'Ready to work offline';
