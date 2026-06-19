@@ -8,272 +8,331 @@
 <meta name="theme-color" content="#0b3d2e">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <style>
-  :root {
-    --bg: #0b3d2e;
-    --fg: #ffffff;
-    --accent: #ffd60a;
-    --card: rgba(255,255,255,0.06);
-    --border: rgba(255,255,255,0.1);
-    --live: #ff3b30;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--fg);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 2rem 1rem;
-  }
-  header { text-align: center; margin-bottom: 1.5rem; }
-  h1 { margin: 0; font-size: 1.8rem; }
-  p.tagline { opacity: 0.8; margin-top: 0.25rem; }
-  main {
-    width: 100%;
-    max-width: 480px;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-  .schedule-section {
-    background: var(--card);
-    border-radius: 12px;
-    padding: 1.25rem;
-  }
-  .section-head { margin-bottom: 0.5rem; }
-  .section-head h2 {
-    margin: 0;
-    font-size: 1.05rem;
-    color: var(--accent);
-  }
-  ul.match-list { list-style: none; padding: 0; margin: 0; }
-  ul.match-list li.match-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid var(--border);
-  }
-  ul.match-list li.match-row:last-child { border-bottom: none; }
-  .match-time { font-size: 0.8rem; opacity: 0.8; }
-  .match-teams { font-weight: 600; display: flex; align-items: center; flex-wrap: wrap; }
-  .match-meta { font-size: 0.8rem; opacity: 0.7; }
-  .vs-sep { opacity: 0.6; }
-  li.match-empty {
-    padding: 0.75rem 0;
-    font-style: italic;
-    opacity: 0.7;
-  }
+:root {
+  --bg: #0b3d2e;
+  --fg: #ffffff;
+  --accent: #ffd60a;
+  --card: rgba(255,255,255,0.06);
+  --border: rgba(255,255,255,0.1);
+  --live: #ff3b30;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1rem;
+}
+header { text-align: center; margin-bottom: 1.5rem; }
+h1 { margin: 0; font-size: 1.8rem; }
+p.tagline { opacity: 0.8; margin-top: 0.25rem; }
+main {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.schedule-section {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+.section-head { margin-bottom: 0.5rem; }
+.section-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--accent);
+}
+ul.match-list { list-style: none; padding: 0; margin: 0; }
+ul.match-list li.match-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+ul.match-list li.match-row:last-child { border-bottom: none; }
+.match-time { font-size: 0.8rem; opacity: 0.8; }
+.match-teams { font-weight: 600; display: flex; align-items: center; flex-wrap: wrap; }
+.match-meta { font-size: 0.8rem; opacity: 0.7; }
+.vs-sep { opacity: 0.6; }
+li.match-empty {
+  padding: 0.75rem 0;
+  font-style: italic;
+  opacity: 0.7;
+}
 
-  /* Flags */
-  .flag {
-    display: inline-block;
-    width: 1.35em;
-    height: 1em;
-    margin-right: 0.4em;
-    vertical-align: -0.15em;
-    border-radius: 2px;
-    overflow: hidden;
-    flex-shrink: 0;
-    background: rgba(255,255,255,0.15);
-  }
-  .flag svg { display: block; width: 100%; height: 100%; object-fit: cover; }
-  .team-name { white-space: normal; }
+/* Flags */
+.flag {
+  display: inline-block;
+  width: 1.35em;
+  height: 1em;
+  margin-right: 0.4em;
+  vertical-align: -0.15em;
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.15);
+}
+.flag svg { display: block; width: 100%; height: 100%; object-fit: cover; }
+.team-name { white-space: normal; }
 
-  /* Playing now */
-  li.playing-row .live-badge {
-    align-self: flex-start;
-    background: var(--live);
-    color: #fff;
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    padding: 0.15rem 0.5rem;
-    border-radius: 999px;
-    margin-bottom: 0.2rem;
-  }
-  .match-note { font-size: 0.78rem; opacity: 0.75; font-style: italic; }
+/* Playing now */
+li.playing-row .live-badge {
+  align-self: flex-start;
+  background: var(--live);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  margin-bottom: 0.2rem;
+}
+.match-note { font-size: 0.78rem; opacity: 0.75; font-style: italic; }
 
-  /* Results */
-  .match-score-wrap {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    font-weight: 600;
-    flex-wrap: wrap;
-  }
-  .match-score-wrap .team { display: flex; align-items: center; flex: 1; min-width: 0; }
-  .match-score-wrap .team2 { justify-content: flex-end; text-align: right; }
-  .match-score-wrap .team2 .team-name { order: -1; margin-right: 0.4em; }
-  .match-score-wrap .team2 .flag { margin-right: 0; margin-left: 0.4em; }
-  .scoreline {
-    font-weight: 700;
-    color: var(--accent);
-    white-space: nowrap;
-    padding: 0 0.3rem;
-  }
-  .match-goals {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.75rem;
-    font-size: 0.78rem;
-    opacity: 0.85;
-    margin-top: 0.3rem;
-  }
-  .team-goals { flex: 1; min-width: 0; }
-  .team-goals:last-child { text-align: right; }
-  .scorers-list { list-style: none; margin: 0; padding: 0; }
-  .scorers-list li { line-height: 1.4; }
+/* Results */
+.match-score-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-weight: 600;
+  flex-wrap: wrap;
+}
+.match-score-wrap .team { display: flex; align-items: center; flex: 1; min-width: 0; }
+.match-score-wrap .team2 { justify-content: flex-end; text-align: right; }
+.match-score-wrap .team2 .team-name { order: -1; margin-right: 0.4em; }
+.match-score-wrap .team2 .flag { margin-right: 0; margin-left: 0.4em; }
+.scoreline {
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+  padding: 0 0.3rem;
+}
+.match-goals {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.78rem;
+  opacity: 0.85;
+  margin-top: 0.3rem;
+}
+.team-goals { flex: 1; min-width: 0; }
+.team-goals:last-child { text-align: right; }
+.scorers-list { list-style: none; margin: 0; padding: 0; }
+.scorers-list li { line-height: 1.4; }
 
-  #refresh-btn {
-    width: 100%;
-    padding: 0.75rem;
-    border: none;
-    border-radius: 8px;
-    background: var(--accent);
-    color: #0b3d2e;
-    font-weight: 600;
-    font-size: 0.95rem;
-    cursor: pointer;
-  }
-  #refresh-btn:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-  #status, #sw-status {
-    font-size: 0.9rem;
-    text-align: center;
-    color: var(--accent);
-    margin: 0.5rem 0 0;
-    min-height: 1.2em;
-  }
+#refresh-btn {
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #0b3d2e;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+#refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+#status, #sw-status {
+  font-size: 0.9rem;
+  text-align: center;
+  color: var(--accent);
+  margin: 0.5rem 0 0;
+  min-height: 1.2em;
+}
 
-  /* Day browser */
-  .day-browser { display: flex; flex-direction: column; gap: 0.85rem; }
+/* Offline banner */
+.offline-banner {
+  font-size: 0.85rem;
+  text-align: center;
+  color: var(--accent);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  margin: 0.5rem 0 0;
+}
 
-  .quick-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-  .quick-filter-btn {
-    flex: 1 1 auto;
-    padding: 0.5rem 0.6rem;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: rgba(255,255,255,0.08);
-    color: var(--fg);
-    font-size: 0.78rem;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-  .quick-filter-btn:disabled { opacity: 0.45; cursor: default; }
+/* Loading skeleton */
+.skeleton-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.skeleton-row {
+  height: 2.6rem;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.14) 37%, rgba(255,255,255,0.06) 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
 
-  .day-nav { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
-  .day-nav-btn {
-    flex-shrink: 0;
-    width: 2.25rem;
-    height: 2.25rem;
-    border: none;
-    border-radius: 999px;
-    background: var(--accent);
-    color: #0b3d2e;
-    font-size: 1.1rem;
-    font-weight: 700;
-    cursor: pointer;
-  }
-  .day-nav-btn:disabled { opacity: 0.4; cursor: default; }
-  #day-label { margin: 0; font-size: 1rem; text-align: center; color: var(--accent); flex: 1; }
+/* Feed error */
+.feed-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: center;
+  padding: 1rem 0;
+}
+.feed-error p { margin: 0; opacity: 0.85; }
+.retry-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.1);
+  color: var(--fg);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
 
-  /* Notifications */
-  .notify-section { display: flex; flex-direction: column; gap: 0.6rem; }
-  .notify-btn, .copy-btn {
-    padding: 0.65rem;
-    border: none;
-    border-radius: 8px;
-    background: var(--accent);
-    color: #0b3d2e;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-  }
-  .copy-btn { background: rgba(255,255,255,0.12); color: var(--fg); border: 1px solid var(--border); }
-  #notify-status { font-size: 0.85rem; opacity: 0.85; margin: 0; min-height: 1.2em; }
-  .subscription-display { display: flex; flex-direction: column; gap: 0.5rem; }
-  .subscription-textarea {
-    width: 100%;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 0.72rem;
-    background: rgba(0,0,0,0.25);
-    color: var(--fg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 0.6rem;
-    resize: vertical;
-  }
+/* Day browser */
+.day-browser { display: flex; flex-direction: column; gap: 0.85rem; }
+
+.quick-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.quick-filter-btn {
+  flex: 1 1 auto;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.08);
+  color: var(--fg);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.quick-filter-btn:disabled { opacity: 0.45; cursor: default; }
+
+.day-nav { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.day-nav-btn {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #0b3d2e;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.day-nav-btn:disabled { opacity: 0.4; cursor: default; }
+#day-label { margin: 0; font-size: 1rem; text-align: center; color: var(--accent); flex: 1; }
+
+/* Notifications */
+.notify-section { display: flex; flex-direction: column; gap: 0.6rem; }
+.notify-btn, .copy-btn {
+  padding: 0.65rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #0b3d2e;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.copy-btn { background: rgba(255,255,255,0.12); color: var(--fg); border: 1px solid var(--border); }
+#notify-status { font-size: 0.85rem; opacity: 0.85; margin: 0; min-height: 1.2em; }
+.subscription-display { display: flex; flex-direction: column; gap: 0.5rem; }
+.subscription-textarea {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  background: rgba(0,0,0,0.25);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem;
+  resize: vertical;
+}
 </style>
 </head>
 <body>
-  <header>
-    <h1>🏆 WC2026 Tracker</h1>
-    <p class="tagline">Your scoreboard for the 2026 World Cup</p>
-  </header>
+<header>
+<h1>🏆 WC2026 Tracker</h1>
+<p class="tagline">Your scoreboard for the 2026 World Cup</p>
+</header>
 
-  <main>
-    <section class="schedule-section day-browser" id="day-browser">
-      <div class="quick-filters">
-        <button id="quick-today-btn" type="button" class="quick-filter-btn">Today</button>
-        <button id="quick-live-btn" type="button" class="quick-filter-btn" disabled>Live now (0)</button>
-        <button id="quick-next-btn" type="button" class="quick-filter-btn" disabled>Next match</button>
-        <button id="quick-latest-btn" type="button" class="quick-filter-btn" disabled>Latest result</button>
-      </div>
+<main>
+<section class="schedule-section day-browser" id="day-browser">
+<div class="quick-filters">
+<button id="quick-today-btn" type="button" class="quick-filter-btn">Today</button>
+<button id="quick-live-btn" type="button" class="quick-filter-btn" disabled>Live now (0)</button>
+<button id="quick-next-btn" type="button" class="quick-filter-btn" disabled>Next match</button>
+<button id="quick-latest-btn" type="button" class="quick-filter-btn" disabled>Latest result</button>
+</div>
 
-      <div class="day-nav">
-        <button id="day-prev-btn" type="button" class="day-nav-btn" aria-label="Previous day">&larr;</button>
-        <h2 id="day-label">Loading&hellip;</h2>
-        <button id="day-next-btn" type="button" class="day-nav-btn" aria-label="Next day">&rarr;</button>
-      </div>
+<div class="day-nav">
+<button id="day-prev-btn" type="button" class="day-nav-btn" aria-label="Previous day">&larr;</button>
+<h2 id="day-label">Loading&hellip;</h2>
+<button id="day-next-btn" type="button" class="day-nav-btn" aria-label="Next day">&rarr;</button>
+</div>
 
-      <ul id="day-matches" class="match-list">
-        <li class="match-empty">Loading&hellip;</li>
-      </ul>
-    </section>
+<ul id="day-skeleton" class="match-list skeleton-list" aria-hidden="true">
+<li class="skeleton-row"></li>
+<li class="skeleton-row"></li>
+<li class="skeleton-row"></li>
+</ul>
 
-    <button id="refresh-btn" type="button">Refresh schedule</button>
+<ul id="day-matches" class="match-list" hidden>
+<li class="match-empty">Loading&hellip;</li>
+</ul>
 
-    <section class="schedule-section notify-section" id="notify-section">
-      <div class="section-head"><h2>Notifications</h2></div>
-      <button id="enable-notifications-btn" type="button" class="notify-btn">Enable notifications</button>
-      <p id="notify-status"></p>
-      <div id="subscription-display" class="subscription-display" hidden>
-        <textarea id="subscription-json" class="subscription-textarea" readonly rows="6"></textarea>
-        <button id="copy-subscription-btn" type="button" class="copy-btn">Copy subscription JSON</button>
-      </div>
-    </section>
-  </main>
+<div id="feed-error" class="feed-error" hidden>
+<p id="feed-error-text">Unable to load the match schedule.</p>
+<button id="retry-btn" type="button" class="retry-btn">Retry</button>
+</div>
+</section>
 
-  <p id="status">Loading schedule&hellip;</p>
-  <p id="sw-status"></p>
+<button id="refresh-btn" type="button">Refresh schedule</button>
 
-  <script src="flags.js" defer></script>
-  <script src="app.js" defer></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js')
-          .then(() => {
-            const el = document.getElementById('sw-status');
-            if (el) el.textContent = 'Ready to work offline';
-          })
-          .catch((err) => {
-            console.error('Service worker registration failed:', err);
-          });
-      });
-    }
-  </script>
+<section class="schedule-section notify-section" id="notify-section">
+<div class="section-head"><h2>Notifications</h2></div>
+<button id="enable-notifications-btn" type="button" class="notify-btn">Enable notifications</button>
+<p id="notify-status"></p>
+<div id="subscription-display" class="subscription-display" hidden>
+<textarea id="subscription-json" class="subscription-textarea" readonly rows="6"></textarea>
+<button id="copy-subscription-btn" type="button" class="copy-btn">Copy subscription JSON</button>
+</div>
+</section>
+</main>
+
+<p id="status">Loading schedule&hellip;</p>
+<p id="offline-banner" class="offline-banner" hidden></p>
+<p id="sw-status"></p>
+
+<script src="flags.js" defer></script>
+<script src="app.js" defer></script>
+<script>
+if ('serviceWorker' in navigator) {
+window.addEventListener('load', () => {
+navigator.serviceWorker.register('service-worker.js')
+.then(() => {
+const el = document.getElementById('sw-status');
+if (el) el.textContent = 'Ready to work offline';
+})
+.catch((err) => {
+console.error('Service worker registration failed:', err);
+});
+});
+}
+</script>
 </body>
 </html>
