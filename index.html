@@ -21,6 +21,11 @@
   --live: #ff3b30;
 }
 * { box-sizing: border-box; }
+/* Several elements below use display:flex on their class but are toggled
+   via the native `hidden` attribute -- without this rule, the class's
+   display:flex wins over the browser's default [hidden]{display:none} and
+   the element stays visibly on screen even while "hidden". */
+[hidden] { display: none !important; }
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
