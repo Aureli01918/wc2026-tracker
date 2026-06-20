@@ -2,7 +2,12 @@
   'use strict';
 
   // Country name -> flag-icons code, for all 48 real 2026 World Cup teams.
-  var COUNTRY_TO_CODE = {"Mexico":"mx","South Africa":"za","South Korea":"kr","Czech Republic":"cz","Canada":"ca","Bosnia & Herzegovina":"ba","Qatar":"qa","Switzerland":"ch","Brazil":"br","Morocco":"ma","Haiti":"ht","Scotland":"gb-sct","USA":"us","Paraguay":"py","Australia":"au","Turkey":"tr","Germany":"de","Curaçao":"cw","Ivory Coast":"ci","Ecuador":"ec","Netherlands":"nl","Japan":"jp","Sweden":"se","Tunisia":"tn","Belgium":"be","Egypt":"eg","Iran":"ir","New Zealand":"nz","Spain":"es","Cape Verde":"cv","Saudi Arabia":"sa","Uruguay":"uy","France":"fr","Senegal":"sn","Iraq":"iq","Norway":"no","Argentina":"ar","Algeria":"dz","Austria":"at","Jordan":"jo","Portugal":"pt","DR Congo":"cd","Uzbekistan":"uz","Colombia":"co","England":"gb-eng","Croatia":"hr","Ghana":"gh","Panama":"pa"};
+  var COUNTRY_TO_CODE = {"Mexico":"mx","South Africa":"za","South Korea":"kr","Czech Republic":"cz","Canada":"ca","Bosnia & Herzegovina":"ba","Qatar":"qa","Switzerland":"ch","Brazil":"br","Morocco":"ma","Haiti":"ht","Scotland":"gb-sct","USA":"us","Paraguay":"py","Australia":"au","Turkey":"tr","Germany":"de","Curaçao":"cw","Ivory Coast":"ci","Ecuador":"ec","Netherlands":"nl","Japan":"jp","Sweden":"se","Tunisia":"tn","Belgium":"be","Egypt":"eg","Iran":"ir","New Zealand":"nz","Spain":"es","Cape Verde":"cv","Saudi Arabia":"sa","Uruguay":"uy","France":"fr","Senegal":"sn","Iraq":"iq","Norway":"no","Argentina":"ar","Algeria":"dz","Austria":"at","Jordan":"jo","Portugal":"pt","DR Congo":"cd","Uzbekistan":"uz","Colombia":"co","England":"gb-eng","Croatia":"hr","Ghana":"gh","Panama":"pa","Wales":"gb-wls"};
+
+  // Country name -> FIFA-style 3-letter abbreviation, same key set as
+  // COUNTRY_TO_CODE plus Wales (handled defensively even though Wales is not
+  // part of the 2026 field, per gb-eng/gb-sct/gb-wls coverage).
+  var COUNTRY_TO_ABBR = {"Algeria":"ALG","Argentina":"ARG","Australia":"AUS","Austria":"AUT","Belgium":"BEL","Bosnia & Herzegovina":"BIH","Brazil":"BRA","Canada":"CAN","Cape Verde":"CPV","Colombia":"COL","Croatia":"CRO","Curaçao":"CUW","Czech Republic":"CZE","DR Congo":"COD","Ecuador":"ECU","Egypt":"EGY","England":"ENG","France":"FRA","Germany":"GER","Ghana":"GHA","Haiti":"HAI","Iran":"IRN","Iraq":"IRQ","Ivory Coast":"CIV","Japan":"JPN","Jordan":"JOR","Mexico":"MEX","Morocco":"MAR","Netherlands":"NED","New Zealand":"NZL","Norway":"NOR","Panama":"PAN","Paraguay":"PAR","Portugal":"POR","Qatar":"QAT","Saudi Arabia":"KSA","Scotland":"SCO","Senegal":"SEN","South Africa":"RSA","South Korea":"KOR","Spain":"ESP","Sweden":"SWE","Switzerland":"SUI","Tunisia":"TUN","Turkey":"TUR","USA":"USA","Uruguay":"URU","Uzbekistan":"UZB","Wales":"WAL"};
 
   // Patterns matching undecided knockout-stage slots, e.g. "2A", "3A/B/C/D/F", "W101", "L101".
   var PLACEHOLDER_PATTERNS = [
@@ -19,6 +24,23 @@
 
   function codeForCountry(name) {
     return COUNTRY_TO_CODE[(name || '').trim()] || null;
+  }
+
+  // Returns the 3-letter abbreviation for a team name: the mapped FIFA-style
+  // code if known, the raw (already-short) placeholder text for undecided
+  // knockout slots, or the first 3 letters of the name as a last resort.
+  function abbrFor(name) {
+    var s = (name || '').trim();
+    if (COUNTRY_TO_ABBR[s]) return COUNTRY_TO_ABBR[s];
+    if (isPlaceholderTeam(s)) return s.toUpperCase();
+    return s.slice(0, 3).toUpperCase();
+  }
+
+  // True only when a real, bundled flag SVG exists for this name -- used to
+  // decide between rendering the flag and falling back to a text code chip.
+  function hasFlag(name) {
+    var code = codeForCountry(name);
+    return !!(code && FLAGS[code]);
   }
 
   var PLACEHOLDER_SVG = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 640 480\" role=\"img\"><rect width=\"640\" height=\"480\" fill=\"#cbd5e1\"/><path d=\"M0 0h640v480H0z\" fill=\"none\" stroke=\"#94a3b8\" stroke-width=\"12\"/><text x=\"320\" y=\"305\" font-family=\"Arial, sans-serif\" font-size=\"220\" font-weight=\"700\" fill=\"#64748b\" text-anchor=\"middle\">?</text></svg>";
@@ -93,6 +115,8 @@
     codeForCountry: codeForCountry,
     isPlaceholderTeam: isPlaceholderTeam,
     svgFor: svgFor,
-    flagHtml: flagHtml
+    flagHtml: flagHtml,
+    abbrFor: abbrFor,
+    hasFlag: hasFlag
   };
 })();
