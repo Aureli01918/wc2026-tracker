@@ -626,6 +626,193 @@
     }
   }
 
+  // ---- Group standings -------------------------------------------------
+
+  // Returns the sorted list of group labels present in `matches`, e.g.
+  // ["Group A", "Group B", ...]. Matches without a `group` (knockout
+  // rounds) are ignored.
+  function groupLabels(matches) {
+    var seen = {};
+    var labels = [];
+    matches.forEach(function (m) {
+      if (m.group && !seen[m.group]) {
+        seen[m.group] = true;
+        labels.push(m.group);
+      }
+    });
+    return labels.sort();
+  }
+
+  function emptyStanding(team) {
+    return { team: team, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0 };
+  }
+
+  // Builds the standings table for a single group: every team that has
+  // appeared in a group-stage match for `groupLabel` gets a row (even
+  // before it has played), sorted by points, then goal difference, then
+  // goals scored, then name -- the standard table tie-break order minus
+  // head-to-head/disciplinary points, which the feed doesn't expose.
+  function computeGroupStandings(matches, groupLabel) {
+    var groupMatches = matches.filter(function (m) { return m.group === groupLabel; });
+    var table = {};
+    var order = [];
+
+    function ensure(team) {
+      if (!table[team]) {
+        table[team] = emptyStanding(team);
+        order.push(team);
+      }
+      return table[team];
+    }
+
+    groupMatches.forEach(function (m) {
+      ensure(m.team1);
+      ensure(m.team2);
+    });
+
+    groupMatches.forEach(function (m) {
+      if (!hasFinalScore(m)) return;
+      var a = table[m.team1];
+      var b = table[m.team2];
+      var ga = m.score.ft[0];
+      var gb = m.score.ft[1];
+
+      a.played++;
+      b.played++;
+      a.gf += ga;
+      a.ga += gb;
+      b.gf += gb;
+      b.ga += ga;
+
+      if (ga > gb) {
+        a.won++;
+        a.pts += 3;
+        b.lost++;
+      } else if (ga < gb) {
+        b.won++;
+        b.pts += 3;
+        a.lost++;
+      } else {
+        a.drawn++;
+        a.pts += 1;
+        b.drawn++;
+        b.pts += 1;
+      }
+    });
+
+    var rows = order.map(function (team) {
+      var row = table[team];
+      row.gd = row.gf - row.ga;
+      return row;
+    });
+
+    rows.sort(function (x, y) {
+      if (y.pts !== x.pts) return y.pts - x.pts;
+      if (y.gd !== x.gd) return y.gd - x.gd;
+      if (y.gf !== x.gf) return y.gf - x.gf;
+      return x.team.localeCompare(y.team);
+    });
+
+    return rows;
+  }
+
+  // Tracks the matches from the most recent fetch/refresh and the
+  // currently-selected group, so switching groups can re-render instantly
+  // without re-fetching.
+  var standingsState = { matches: [], selectedGroup: null };
+
+  // Fills the group <select> with one option per group found in `matches`,
+  // preserving the current selection where possible. No-ops if the
+  // standings markup isn't present on the page yet.
+  function populateStandingsGroupSelect(matches) {
+    var select = document.getElementById('standings-group-select');
+    if (!select) return null;
+
+    var labels = groupLabels(matches);
+    var existing = Array.prototype.map.call(select.options, function (opt) { return opt.value; });
+    var sameOptions = existing.length === labels.length && existing.every(function (v, i) { return v === labels[i]; });
+
+    if (!sameOptions) {
+      select.innerHTML = '';
+      labels.forEach(function (label) {
+        var opt = document.createElement('option');
+        opt.value = label;
+        opt.textContent = label;
+        select.appendChild(opt);
+      });
+    }
+
+    if (!standingsState.selectedGroup || labels.indexOf(standingsState.selectedGroup) === -1) {
+      standingsState.selectedGroup = labels[0] || null;
+    }
+    select.value = standingsState.selectedGroup || '';
+    return labels;
+  }
+
+  // Renders the standings table body for `groupLabel`. Highlights the top
+  // two rows (the qualifying spots) with the `standings-qualify` class.
+  function renderStandingsTable(matches, groupLabel) {
+    var body = document.getElementById('standings-body');
+    if (!body) return;
+
+    body.innerHTML = '';
+    if (!groupLabel) return;
+
+    var rows = computeGroupStandings(matches, groupLabel);
+    rows.forEach(function (row, index) {
+      var tr = document.createElement('tr');
+      tr.className = 'standings-row' + (index < 2 ? ' standings-qualify' : '');
+
+      var pos = document.createElement('td');
+      pos.className = 'standings-pos';
+      pos.textContent = String(index + 1);
+      tr.appendChild(pos);
+
+      var team = document.createElement('td');
+      team.className = 'standings-team';
+      team.appendChild(teamFragment(row.team));
+      tr.appendChild(team);
+
+      function numCell(value, extraClass) {
+        var td = document.createElement('td');
+        td.className = 'standings-num' + (extraClass ? ' ' + extraClass : '');
+        td.textContent = String(value);
+        return td;
+      }
+
+      tr.appendChild(numCell(row.played));
+      tr.appendChild(numCell(row.won));
+      tr.appendChild(numCell(row.drawn));
+      tr.appendChild(numCell(row.lost));
+      tr.appendChild(numCell(row.gd > 0 ? '+' + row.gd : row.gd));
+      tr.appendChild(numCell(row.pts, 'standings-pts'));
+
+      body.appendChild(tr);
+    });
+  }
+
+  // Single entry point called from renderSchedule(): refreshes the group
+  // selector (if the set of groups changed) and re-renders the currently
+  // selected group's table from the latest matches.
+  function renderStandings(matches) {
+    var section = document.getElementById('standings-section');
+    if (!section) return;
+    standingsState.matches = matches;
+    populateStandingsGroupSelect(matches);
+    renderStandingsTable(matches, standingsState.selectedGroup);
+  }
+
+  // Wires the group <select> so switching groups re-renders instantly
+  // from the last-fetched matches. Safe to call before the markup exists.
+  function wireStandings() {
+    var select = document.getElementById('standings-group-select');
+    if (!select) return;
+    select.addEventListener('change', function () {
+      standingsState.selectedGroup = select.value;
+      renderStandingsTable(standingsState.matches, standingsState.selectedGroup);
+    });
+  }
+
   function renderList(listEl, matches, emptyText, rowFn) {
     listEl.innerHTML = '';
     if (!matches.length) {
@@ -726,6 +913,7 @@
     }
     renderDayBrowser(dayBrowserState.selectedKey, result.matches);
     updateQuickFilters(result.matches);
+    renderStandings(result.matches);
 
     updateStatusLine(result);
   }
@@ -884,6 +1072,7 @@
   document.addEventListener('DOMContentLoaded', function () {
     loadSchedule({ isFirstLoad: true });
     wireDayBrowser();
+    wireStandings();
     wireNotifications();
     wireVisibilityRefresh();
 
@@ -923,6 +1112,10 @@
   window.WC2026.goToRelativeDay = goToRelativeDay;
   window.WC2026.updateQuickFilters = updateQuickFilters;
   window.WC2026.wireDayBrowser = wireDayBrowser;
+  window.WC2026.groupLabels = groupLabels;
+  window.WC2026.computeGroupStandings = computeGroupStandings;
+  window.WC2026.renderStandings = renderStandings;
+  window.WC2026.wireStandings = wireStandings;
   window.WC2026.urlBase64ToUint8Array = urlBase64ToUint8Array;
   window.WC2026.enableNotifications = enableNotifications;
   window.WC2026.wireNotifications = wireNotifications;
