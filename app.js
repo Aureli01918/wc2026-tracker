@@ -204,6 +204,22 @@
     }
   }
 
+  // Short Melbourne local time only, e.g. "15:00" -- used in the collapsed
+  // match-card's status line ("Kick-off HH:MM").
+  function formatTimeShort(date) {
+    try {
+      var fmt = new Intl.DateTimeFormat('en-GB', {
+        timeZone: MELBOURNE_TZ,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      return fmt.format(date);
+    } catch (e) {
+      return '';
+    }
+  }
+
   // Returns YYYY-MM-DD for the given instant, in Melbourne local time.
   function melbourneDateKey(date) {
     var fmt = new Intl.DateTimeFormat('en-CA', {
@@ -345,14 +361,32 @@
     return 'upcoming';
   }
 
-  function flagSpan(name) {
-    var span = document.createElement('span');
-    span.className = 'flag';
-    span.setAttribute('aria-hidden', 'true');
-    if (window.WC2026Flags && typeof window.WC2026Flags.svgFor === 'function') {
-      span.innerHTML = window.WC2026Flags.svgFor(name);
+  // Returns the 3-letter abbreviation for a team name via flags.js, falling
+  // back to the first 3 letters if flags.js hasn't loaded for some reason.
+  function abbrText(name) {
+    if (window.WC2026Flags && typeof window.WC2026Flags.abbrFor === 'function') {
+      return window.WC2026Flags.abbrFor(name);
     }
-    return span;
+    return (name || '').slice(0, 3).toUpperCase();
+  }
+
+  // Flag SVG span when a bundled flag exists for `name`; otherwise a small
+  // text "chip" showing the abbreviation, so a missing flag never renders as
+  // a broken image.
+  function flagSpan(name) {
+    var hasFlag = window.WC2026Flags && typeof window.WC2026Flags.hasFlag === 'function' && window.WC2026Flags.hasFlag(name);
+    if (hasFlag) {
+      var span = document.createElement('span');
+      span.className = 'flag';
+      span.setAttribute('aria-hidden', 'true');
+      span.innerHTML = window.WC2026Flags.svgFor(name);
+      return span;
+    }
+    var chip = document.createElement('span');
+    chip.className = 'flag-chip';
+    chip.setAttribute('aria-hidden', 'true');
+    chip.textContent = abbrText(name);
+    return chip;
   }
 
   // A decorative flag + the team/country name, safe to drop into any row.
@@ -366,146 +400,254 @@
     return frag;
   }
 
-  function scorersList(goals) {
-    var ul = document.createElement('ul');
-    ul.className = 'scorers-list';
-    goals.slice().sort(function (a, b) { return goalSortKey(a) - goalSortKey(b); })
-      .forEach(function (g) {
-        var li = document.createElement('li');
-        li.textContent = goalLineText(g);
-        ul.appendChild(li);
-      });
-    return ul;
+  // ---- Match card (soft-depth tile) ------------------------------------
+
+  // Which team (if any) won outright -- penalties decide first, then extra
+  // time, then full time. Returns null for an undecided/drawn match.
+  function decidedWinner(m) {
+    if (!m.score || !m.score.ft) return null;
+    if (m.score.p) {
+      if (m.score.p[0] > m.score.p[1]) return m.team1;
+      if (m.score.p[1] > m.score.p[0]) return m.team2;
+      return null;
+    }
+    var g1 = m.score.et ? m.score.et[0] : m.score.ft[0];
+    var g2 = m.score.et ? m.score.et[1] : m.score.ft[1];
+    if (g1 > g2) return m.team1;
+    if (g2 > g1) return m.team2;
+    return null;
   }
 
-  function matchRow(m) {
-    var li = document.createElement('li');
-    li.className = 'match-row';
+  function buildTeamRow(name, isWinner) {
+    var row = document.createElement('div');
+    row.className = 'team-row';
+    row.appendChild(flagSpan(name));
 
-    var time = document.createElement('span');
-    time.className = 'match-time';
-    time.textContent = formatKickoff(m.kickoff);
+    var abbr = document.createElement('span');
+    abbr.className = 'team-abbr';
+    abbr.textContent = abbrText(name);
+    row.appendChild(abbr);
 
-    var teams = document.createElement('span');
-    teams.className = 'match-teams';
-    teams.appendChild(teamFragment(m.team1));
-    var vs = document.createElement('span');
-    vs.className = 'vs-sep';
-    vs.textContent = ' vs ';
-    teams.appendChild(vs);
-    teams.appendChild(teamFragment(m.team2));
+    var nameSpan = document.createElement('span');
+    nameSpan.className = 'team-name' + (isWinner ? ' winner' : '');
+    nameSpan.textContent = name;
+    row.appendChild(nameSpan);
 
-    var meta = document.createElement('span');
-    meta.className = 'match-meta';
-    meta.textContent = [m.group, m.venue].filter(Boolean).join(' · ');
-
-    li.appendChild(time);
-    li.appendChild(teams);
-    li.appendChild(meta);
-    return li;
+    return row;
   }
 
-  function playingNowRow(m) {
-    var li = document.createElement('li');
-    li.className = 'match-row playing-row';
+  // Builds the collapsed card's top status line: "Full time" (+ AET/Pens
+  // note), a pulsing gold "LIVE" pill with an approximate elapsed minute, or
+  // "Kick-off HH:MM" for matches still ahead. There's no live-clock field in
+  // the feed, so the live minute is estimated from elapsed time since kickoff
+  // -- a display-only approximation, not a change to the data model.
+  function statusLineContent(m) {
+    var status = dayMatchStatus(m);
 
-    var badge = document.createElement('span');
-    badge.className = 'live-badge';
-    badge.textContent = 'In progress';
-    li.appendChild(badge);
-
-    var time = document.createElement('span');
-    time.className = 'match-time';
-    time.textContent = formatKickoff(m.kickoff);
-    li.appendChild(time);
-
-    var teams = document.createElement('span');
-    teams.className = 'match-teams';
-    teams.appendChild(teamFragment(m.team1));
-    var vs = document.createElement('span');
-    vs.className = 'vs-sep';
-    vs.textContent = ' vs ';
-    teams.appendChild(vs);
-    teams.appendChild(teamFragment(m.team2));
-    li.appendChild(teams);
-
-    var note = document.createElement('span');
-    note.className = 'match-note';
-    note.textContent = 'Score will appear after full-time';
-    li.appendChild(note);
-
-    var meta = document.createElement('span');
-    meta.className = 'match-meta';
-    meta.textContent = [m.round, m.group, m.venue].filter(Boolean).join(' · ');
-    li.appendChild(meta);
-
-    return li;
-  }
-
-  function resultRow(m) {
-    var li = document.createElement('li');
-    li.className = 'match-row result-row';
-
-    var time = document.createElement('span');
-    time.className = 'match-time';
-    time.textContent = formatKickoff(m.kickoff);
-    li.appendChild(time);
-
-    var scoreWrap = document.createElement('div');
-    scoreWrap.className = 'match-score-wrap';
-
-    var t1 = document.createElement('span');
-    t1.className = 'team team1';
-    t1.appendChild(teamFragment(m.team1));
-
-    var score = document.createElement('span');
-    score.className = 'scoreline';
-    score.textContent = scorelineText(m.score);
-
-    var t2 = document.createElement('span');
-    t2.className = 'team team2';
-    t2.appendChild(teamFragment(m.team2));
-
-    scoreWrap.appendChild(t1);
-    scoreWrap.appendChild(score);
-    scoreWrap.appendChild(t2);
-    li.appendChild(scoreWrap);
-
-    var hasGoals1 = m.goals1 && m.goals1.length;
-    var hasGoals2 = m.goals2 && m.goals2.length;
-    if (hasGoals1 || hasGoals2) {
-      var goalsWrap = document.createElement('div');
-      goalsWrap.className = 'match-goals';
-
-      var g1 = document.createElement('div');
-      g1.className = 'team-goals';
-      if (hasGoals1) g1.appendChild(scorersList(m.goals1));
-
-      var g2 = document.createElement('div');
-      g2.className = 'team-goals';
-      if (hasGoals2) g2.appendChild(scorersList(m.goals2));
-
-      goalsWrap.appendChild(g1);
-      goalsWrap.appendChild(g2);
-      li.appendChild(goalsWrap);
+    if (status === 'finished') {
+      var text = 'Full time';
+      if (m.score && m.score.p) text += ' · Pens ' + scorePairText(m.score.p);
+      else if (m.score && m.score.et) text += ' · AET';
+      var span = document.createElement('span');
+      span.className = 'status-text';
+      span.textContent = text;
+      return span;
     }
 
-    var meta = document.createElement('span');
-    meta.className = 'match-meta';
-    meta.textContent = [m.round, m.group, m.venue].filter(Boolean).join(' · ');
-    li.appendChild(meta);
+    if (status === 'playing') {
+      var pill = document.createElement('span');
+      pill.className = 'live-pill';
+      var dot = document.createElement('span');
+      dot.className = 'live-dot';
+      pill.appendChild(dot);
+      var minutes = Math.max(0, Math.floor((Date.now() - m.kickoff.getTime()) / 60000));
+      var minuteText = minutes > 90 ? '90+' : String(minutes);
+      pill.appendChild(document.createTextNode('LIVE ' + minuteText + "'"));
+      return pill;
+    }
 
-    return li;
+    var upcoming = document.createElement('span');
+    upcoming.className = 'status-text';
+    upcoming.textContent = 'Kick-off ' + formatTimeShort(m.kickoff);
+    return upcoming;
   }
 
-  // Picks the right row renderer for a single day's match based on its
-  // status (finished / playing / upcoming) -- reuses the same row builders
-  // as the existing Results/Playing-now/Today-Upcoming sections.
-  function dayMatchRow(m) {
+  function buildChevron() {
+    var chevron = document.createElement('span');
+    chevron.className = 'chevron';
+    chevron.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9">' +
+      '</polyline></svg>';
+    return chevron;
+  }
+
+  function buildCardHeader(m) {
+    var header = document.createElement('button');
+    header.type = 'button';
+    header.className = 'match-card-header';
+    header.setAttribute('aria-expanded', 'false');
+
+    var statusRow = document.createElement('div');
+    statusRow.className = 'status-row';
+    statusRow.appendChild(statusLineContent(m));
+    statusRow.appendChild(buildChevron());
+    header.appendChild(statusRow);
+
+    var body = document.createElement('div');
+    body.className = 'card-body';
+
+    var teamsCol = document.createElement('div');
+    teamsCol.className = 'teams-col';
+    var winner = decidedWinner(m);
+    teamsCol.appendChild(buildTeamRow(m.team1, winner === m.team1));
+    teamsCol.appendChild(buildTeamRow(m.team2, winner === m.team2));
+    body.appendChild(teamsCol);
+
+    if (dayMatchStatus(m) === 'finished') {
+      var scoreCol = document.createElement('div');
+      scoreCol.className = 'score-col';
+      var s1 = document.createElement('span');
+      s1.className = 'score-value';
+      s1.textContent = String(m.score.ft[0]);
+      var s2 = document.createElement('span');
+      s2.className = 'score-value';
+      s2.textContent = String(m.score.ft[1]);
+      scoreCol.appendChild(s1);
+      scoreCol.appendChild(s2);
+      body.appendChild(scoreCol);
+    } else {
+      var kickoffWrap = document.createElement('div');
+      kickoffWrap.className = 'kickoff-col-wrap';
+      var kt = document.createElement('span');
+      kt.className = 'kickoff-time';
+      kt.textContent = formatTimeShort(m.kickoff);
+      kickoffWrap.appendChild(kt);
+      body.appendChild(kickoffWrap);
+    }
+
+    header.appendChild(body);
+    return header;
+  }
+
+  // Merged, minute-sorted goalscorer rows for the expansion: "Name · ABR"
+  // with the minute in gold and penalty/own-goal annotations. Only shown for
+  // finished/live matches. Rows carry a --row-index custom property so the
+  // CSS stagger-in animation can offset each row by ~60ms.
+  function buildScorersBlock(m) {
+    var goals1 = (m.goals1 || []).map(function (g) { return { g: g, team: m.team1 }; });
+    var goals2 = (m.goals2 || []).map(function (g) { return { g: g, team: m.team2 }; });
+    var all = goals1.concat(goals2).sort(function (a, b) { return goalSortKey(a.g) - goalSortKey(b.g); });
+    if (!all.length) return null;
+
+    var block = document.createElement('div');
+    block.className = 'scorers-block';
+    var h = document.createElement('h4');
+    h.textContent = 'Goalscorers';
+    block.appendChild(h);
+
+    all.forEach(function (entry, i) {
+      var row = document.createElement('div');
+      row.className = 'scorer-row';
+      row.style.setProperty('--row-index', String(i));
+
+      var name = document.createElement('span');
+      name.className = 'scorer-name';
+      name.textContent = entry.g.name + ' · ' + abbrText(entry.team) + goalAnnotationText(entry.g);
+
+      var minute = document.createElement('span');
+      minute.className = 'scorer-minute';
+      minute.textContent = goalMinuteText(entry.g);
+
+      row.appendChild(name);
+      row.appendChild(minute);
+      block.appendChild(row);
+    });
+
+    return block;
+  }
+
+  // Meta fact rows: Kick-off (Melbourne date + time), Venue, Stage (group +
+  // round/matchday). Shown for every match, including upcoming ones.
+  function buildMetaBlock(m) {
+    var block = document.createElement('div');
+    block.className = 'meta-block';
+    var h = document.createElement('h4');
+    h.textContent = 'Match info';
+    block.appendChild(h);
+
+    var dl = document.createElement('dl');
+
+    function row(label, value) {
+      if (!value) return;
+      var wrap = document.createElement('div');
+      wrap.className = 'meta-row';
+      var dt = document.createElement('dt');
+      dt.textContent = label;
+      var dd = document.createElement('dd');
+      dd.textContent = value;
+      wrap.appendChild(dt);
+      wrap.appendChild(dd);
+      dl.appendChild(wrap);
+    }
+
+    row('Kick-off', formatKickoff(m.kickoff));
+    row('Venue', m.venue);
+    row('Stage', [m.group, m.round].filter(Boolean).join(' · '));
+
+    block.appendChild(dl);
+    return block;
+  }
+
+  function buildCardExpand(m, matches) {
+    var wrap = document.createElement('div');
+    wrap.className = 'match-card-expand';
+
+    var inner = document.createElement('div');
+    inner.className = 'match-card-expand-inner';
+
+    var content = document.createElement('div');
+    content.className = 'expand-content';
+
+    var divider = document.createElement('div');
+    divider.className = 'expand-divider';
+    content.appendChild(divider);
+
     var status = dayMatchStatus(m);
-    if (status === 'finished') return resultRow(m);
-    if (status === 'playing') return playingNowRow(m);
-    return matchRow(m);
+    if (status === 'finished' || status === 'playing') {
+      var scorers = buildScorersBlock(m);
+      if (scorers) content.appendChild(scorers);
+    }
+
+    content.appendChild(buildMetaBlock(m));
+
+    var groupTable = buildGroupTableBlock(matches, m);
+    if (groupTable) content.appendChild(groupTable);
+
+    inner.appendChild(content);
+    wrap.appendChild(inner);
+    return wrap;
+  }
+
+  // Single unified match-card builder (collapsed header + accordion
+  // expansion) used for every match in the day browser, replacing the old
+  // separate matchRow/playingNowRow/resultRow builders. The expansion is a
+  // sibling of the header (not a descendant), so taps inside the expanded
+  // content never bubble into the header's own click handler and collapse it.
+  function matchCard(m, matches) {
+    var li = document.createElement('li');
+    li.className = 'match-card';
+
+    var header = buildCardHeader(m);
+    var expand = buildCardExpand(m, matches);
+
+    header.addEventListener('click', function () {
+      var isOpen = header.getAttribute('aria-expanded') === 'true';
+      header.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+    });
+
+    li.appendChild(header);
+    li.appendChild(expand);
+    return li;
   }
 
   // ---- Day-by-day browser: navigator + quick-filter wiring ------------
@@ -524,10 +666,48 @@
     return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate());
   }
 
-  // Renders the day browser (heading, prev/next disabled state, match
-  // list) for `dateKey` using `matches`. No-ops if the day-browser markup
-  // isn't present on the page yet.
-  function renderDayBrowser(dateKey, matches) {
+  function prefersReducedMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  // Runs `applyFn` (the actual DOM update for a day change), animating it
+  // directionally when `direction` is given and motion isn't disabled: via
+  // the View Transitions API where supported, a CSS keyframe slide otherwise.
+  function animateDayChange(dayList, direction, applyFn) {
+    if (!direction || !dayList || prefersReducedMotion()) {
+      applyFn();
+      return;
+    }
+
+    var root = document.documentElement;
+    if (typeof document.startViewTransition === 'function') {
+      root.setAttribute('data-day-dir', direction);
+      var transition = document.startViewTransition(applyFn);
+      transition.finished.then(function () {
+        root.removeAttribute('data-day-dir');
+      }).catch(function () {
+        root.removeAttribute('data-day-dir');
+      });
+      return;
+    }
+
+    var cls = direction === 'back' ? 'day-slide-in-back' : 'day-slide-in-fwd';
+    dayList.classList.remove('day-slide-in-fwd', 'day-slide-in-back');
+    applyFn();
+    // Force a reflow so re-adding the same class reliably restarts the animation.
+    void dayList.offsetWidth;
+    dayList.classList.add(cls);
+    dayList.addEventListener('animationend', function handler() {
+      dayList.classList.remove(cls);
+      dayList.removeEventListener('animationend', handler);
+    });
+  }
+
+  // Renders the day browser (heading, prev/next disabled state, match list,
+  // active-tab underline) for `dateKey` using `matches`. `direction`
+  // ('forward' | 'back' | falsy) drives the optional slide-in animation.
+  // No-ops if the day-browser markup isn't present on the page yet.
+  function renderDayBrowser(dateKey, matches, direction) {
     var dayLabel = document.getElementById('day-label');
     var dayList = document.getElementById('day-matches');
     var prevBtn = document.getElementById('day-prev-btn');
@@ -536,30 +716,46 @@
 
     var dates = buildTournamentDates();
     var key = clampDateKey(dateKey, dates);
-    dayBrowserState.selectedKey = key;
 
-    dayLabel.textContent = dateKeyToLabel(key);
+    function applyContent() {
+      dayBrowserState.selectedKey = key;
+      dayLabel.textContent = dateKeyToLabel(key);
 
-    var grouped = groupMatchesByMelbourneDate(matches);
-    var dayMatches = grouped[key] || [];
-    renderList(dayList, dayMatches, 'No matches — rest day.', dayMatchRow);
-    // Only reveal the real list once content has actually been rendered
-    // into it -- the skeleton/list visibility are otherwise independent.
-    dayList.hidden = false;
+      var grouped = groupMatchesByMelbourneDate(matches);
+      var dayMatches = grouped[key] || [];
+      renderList(dayList, dayMatches, 'No matches — rest day.', function (m) { return matchCard(m, matches); });
+      // Only reveal the real list once content has actually been rendered
+      // into it -- the skeleton/list visibility are otherwise independent.
+      dayList.hidden = false;
 
-    if (prevBtn) prevBtn.disabled = (key === dates[0]);
-    if (nextBtn) nextBtn.disabled = (key === dates[dates.length - 1]);
+      if (prevBtn) prevBtn.disabled = (key === dates[0]);
+      if (nextBtn) nextBtn.disabled = (key === dates[dates.length - 1]);
+
+      updateActiveTabUI(matches, key);
+    }
+
+    animateDayChange(dayList, direction, applyContent);
   }
 
   // Navigates the day browser to `dateKey` (clamped into the tournament
-  // range) and re-renders from the last-fetched match list.
-  function goToDate(dateKey) {
-    renderDayBrowser(dateKey, dayBrowserState.matches);
+  // range) and re-renders from the last-fetched match list. If `direction`
+  // isn't given explicitly, it's inferred from whether the target date is
+  // later/earlier than the currently-selected one (YYYY-MM-DD strings sort
+  // chronologically), so jumping via a quick-filter button still slides the
+  // right way.
+  function goToDate(dateKey, direction) {
+    if (direction === undefined) {
+      var current = dayBrowserState.selectedKey;
+      if (current && dateKey > current) direction = 'forward';
+      else if (current && dateKey < current) direction = 'back';
+      else direction = null;
+    }
+    renderDayBrowser(dateKey, dayBrowserState.matches, direction);
   }
 
   function goToRelativeDay(delta) {
     var current = dayBrowserState.selectedKey || melbourneDateKey(new Date());
-    goToDate(addDaysToKey(current, delta));
+    goToDate(addDaysToKey(current, delta), delta > 0 ? 'forward' : 'back');
   }
 
   // Updates quick-filter button labels/enabled-state (e.g. live count).
@@ -583,6 +779,47 @@
     if (latestBtn) {
       latestBtn.disabled = !b.results.length;
     }
+  }
+
+  // Marks whichever quick-filter button corresponds to the currently
+  // selected day as the active tab, and slides the gold underline beneath
+  // it. The underline hides itself when the selected day doesn't match any
+  // of the four quick filters (e.g. after manual prev/next navigation).
+  function updateActiveTabUI(matches, selectedKey) {
+    var bar = document.getElementById('quick-filters');
+    var underline = document.getElementById('tab-underline');
+    if (!bar || !underline) return;
+
+    var b = bucketMatches(matches);
+    var todayKey = melbourneDateKey(new Date());
+    var liveKey = b.playingNow.length ? melbourneDateKey(b.playingNow[0].kickoff) : null;
+    var upcomingAll = b.today.concat(b.upcoming).sort(function (a, c) { return a.kickoff - c.kickoff; });
+    var nextKey = upcomingAll.length ? melbourneDateKey(upcomingAll[0].kickoff) : null;
+    var latestKey = b.results.length ? melbourneDateKey(b.results[0].kickoff) : null;
+
+    var activeId = null;
+    if (liveKey && selectedKey === liveKey) activeId = 'quick-live-btn';
+    else if (selectedKey === todayKey) activeId = 'quick-today-btn';
+    else if (nextKey && selectedKey === nextKey) activeId = 'quick-next-btn';
+    else if (latestKey && selectedKey === latestKey) activeId = 'quick-latest-btn';
+
+    var buttons = bar.querySelectorAll('.tab-btn');
+    Array.prototype.forEach.call(buttons, function (btn) {
+      btn.classList.toggle('is-active', btn.id === activeId);
+    });
+
+    if (!activeId) {
+      underline.classList.remove('is-visible');
+      return;
+    }
+    var activeBtn = document.getElementById(activeId);
+    if (!activeBtn) {
+      underline.classList.remove('is-visible');
+      return;
+    }
+    underline.style.left = activeBtn.offsetLeft + 'px';
+    underline.style.width = activeBtn.offsetWidth + 'px';
+    underline.classList.add('is-visible');
   }
 
   // Wires the prev/next day-navigator buttons and the four quick-filter
@@ -624,6 +861,10 @@
         if (b.results.length) goToDate(melbourneDateKey(b.results[0].kickoff));
       });
     }
+
+    window.addEventListener('resize', function () {
+      updateActiveTabUI(dayBrowserState.matches, dayBrowserState.selectedKey);
+    });
   }
 
   // ---- Group standings -------------------------------------------------
@@ -652,6 +893,13 @@
   // before it has played), sorted by points, then goal difference, then
   // goals scored, then name -- the standard table tie-break order minus
   // head-to-head/disciplinary points, which the feed doesn't expose.
+  //
+  // NOTE: this function and its sort order are intentionally left untouched
+  // by the soft-depth redesign -- the main Standings section keeps exactly
+  // this behavior. The per-match-card group mini-table uses a separate
+  // head-to-head-aware comparator (see compareWithHeadToHead /
+  // computeGroupStandingsForCard below), which only re-sorts a copy of these
+  // same rows and never feeds back into this function.
   function computeGroupStandings(matches, groupLabel) {
     var groupMatches = matches.filter(function (m) { return m.group === groupLabel; });
     var table = {};
@@ -714,6 +962,133 @@
     });
 
     return rows;
+  }
+
+  // ---- Group mini-table tiebreak (per match-card only) -----------------
+  //
+  // Points teamA earned vs teamB across their head-to-head group meeting(s)
+  // in `matches`, or null if they haven't played each other yet.
+  function headToHeadPoints(matches, teamA, teamB) {
+    var games = matches.filter(function (m) {
+      return m.group && hasFinalScore(m) &&
+        ((m.team1 === teamA && m.team2 === teamB) || (m.team1 === teamB && m.team2 === teamA));
+    });
+    if (!games.length) return null;
+
+    var aPts = 0;
+    var bPts = 0;
+    games.forEach(function (m) {
+      var ga = m.team1 === teamA ? m.score.ft[0] : m.score.ft[1];
+      var gb = m.team1 === teamA ? m.score.ft[1] : m.score.ft[0];
+      if (ga > gb) aPts += 3;
+      else if (ga < gb) bPts += 3;
+      else { aPts += 1; bPts += 1; }
+    });
+    return { aPts: aPts, bPts: bPts };
+  }
+
+  // Modular comparator factory: points -> goal difference -> goals scored ->
+  // head-to-head result -> name. Used ONLY by the per-card group mini-table
+  // (via computeGroupStandingsForCard, below) -- computeGroupStandings and
+  // its sort order above are never modified or replaced by this.
+  function compareWithHeadToHead(matches) {
+    return function (x, y) {
+      if (y.pts !== x.pts) return y.pts - x.pts;
+      if (y.gd !== x.gd) return y.gd - x.gd;
+      if (y.gf !== x.gf) return y.gf - x.gf;
+      var h2h = headToHeadPoints(matches, x.team, y.team);
+      if (h2h && h2h.aPts !== h2h.bPts) return h2h.bPts - h2h.aPts;
+      return x.team.localeCompare(y.team);
+    };
+  }
+
+  // Row data is identical to computeGroupStandings (same stats per team);
+  // only the final ordering differs, via the head-to-head-aware comparator.
+  function computeGroupStandingsForCard(matches, groupLabel) {
+    var rows = computeGroupStandings(matches, groupLabel);
+    return rows.slice().sort(compareWithHeadToHead(matches));
+  }
+
+  // Group mini-table for a single match's expansion: pos / flag+abbr+name /
+  // P / GD / Pts, with the two teams in this match highlighted and a gold
+  // inset-left bar on the top-2 (qualifying) rows. Returns null for matches
+  // with no group (knockout rounds).
+  function buildGroupTableBlock(matches, m) {
+    if (!m.group) return null;
+    var rows = computeGroupStandingsForCard(matches, m.group);
+    if (!rows.length) return null;
+
+    var block = document.createElement('div');
+    block.className = 'group-table-block';
+    var h = document.createElement('h4');
+    h.textContent = m.group;
+    block.appendChild(h);
+
+    var table = document.createElement('table');
+    var thead = document.createElement('thead');
+    var headRow = document.createElement('tr');
+    [
+      { label: '#', cls: '' },
+      { label: '', cls: '' },
+      { label: 'Team', cls: 'gt-team-head' },
+      { label: 'P', cls: '' },
+      { label: 'GD', cls: '' },
+      { label: 'Pts', cls: '' }
+    ].forEach(function (col) {
+      var th = document.createElement('th');
+      if (col.cls) th.className = col.cls;
+      th.textContent = col.label;
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    var tbody = document.createElement('tbody');
+    rows.forEach(function (row, index) {
+      var tr = document.createElement('tr');
+      var isMatchTeam = row.team === m.team1 || row.team === m.team2;
+      var classes = [];
+      if (isMatchTeam) classes.push('gt-highlight');
+      if (index < 2) classes.push('gt-qualify');
+      if (classes.length) tr.className = classes.join(' ');
+
+      var pos = document.createElement('td');
+      pos.textContent = String(index + 1);
+      tr.appendChild(pos);
+
+      var flagTd = document.createElement('td');
+      flagTd.appendChild(flagSpan(row.team));
+      tr.appendChild(flagTd);
+
+      var teamTd = document.createElement('td');
+      teamTd.className = 'gt-team';
+      var abbr = document.createElement('span');
+      abbr.className = 'team-abbr';
+      abbr.textContent = abbrText(row.team);
+      var name = document.createElement('span');
+      name.className = 'gt-name';
+      name.textContent = row.team;
+      teamTd.appendChild(abbr);
+      teamTd.appendChild(name);
+      tr.appendChild(teamTd);
+
+      var pCell = document.createElement('td');
+      pCell.textContent = String(row.played);
+      tr.appendChild(pCell);
+
+      var gdCell = document.createElement('td');
+      gdCell.textContent = row.gd > 0 ? '+' + row.gd : String(row.gd);
+      tr.appendChild(gdCell);
+
+      var ptsCell = document.createElement('td');
+      ptsCell.textContent = String(row.pts);
+      tr.appendChild(ptsCell);
+
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    block.appendChild(table);
+    return block;
   }
 
   // Tracks the matches from the most recent fetch/refresh and the
@@ -823,7 +1198,7 @@
       return;
     }
     matches.forEach(function (m) {
-      listEl.appendChild((rowFn || matchRow)(m));
+      listEl.appendChild(rowFn(m));
     });
   }
 
@@ -896,17 +1271,6 @@
   }
 
   function renderSchedule(result) {
-    var playingList = document.getElementById('playing-matches');
-    var todayList = document.getElementById('today-matches');
-    var upcomingList = document.getElementById('upcoming-matches');
-    var resultsList = document.getElementById('results-matches');
-    var b = bucketMatches(result.matches);
-
-    if (playingList) renderList(playingList, b.playingNow, 'No matches in progress.', playingNowRow);
-    if (todayList) renderList(todayList, b.today, 'No matches today.');
-    if (upcomingList) renderList(upcomingList, b.upcoming, 'No upcoming matches found.');
-    if (resultsList) renderList(resultsList, b.results, 'No results yet.', resultRow);
-
     dayBrowserState.matches = result.matches;
     if (!dayBrowserState.selectedKey) {
       dayBrowserState.selectedKey = clampDateKey(melbourneDateKey(new Date()), buildTournamentDates());
@@ -1111,9 +1475,15 @@
   window.WC2026.goToDate = goToDate;
   window.WC2026.goToRelativeDay = goToRelativeDay;
   window.WC2026.updateQuickFilters = updateQuickFilters;
+  window.WC2026.updateActiveTabUI = updateActiveTabUI;
   window.WC2026.wireDayBrowser = wireDayBrowser;
   window.WC2026.groupLabels = groupLabels;
   window.WC2026.computeGroupStandings = computeGroupStandings;
+  window.WC2026.headToHeadPoints = headToHeadPoints;
+  window.WC2026.compareWithHeadToHead = compareWithHeadToHead;
+  window.WC2026.computeGroupStandingsForCard = computeGroupStandingsForCard;
+  window.WC2026.matchCard = matchCard;
+  window.WC2026.decidedWinner = decidedWinner;
   window.WC2026.renderStandings = renderStandings;
   window.WC2026.wireStandings = wireStandings;
   window.WC2026.urlBase64ToUint8Array = urlBase64ToUint8Array;
