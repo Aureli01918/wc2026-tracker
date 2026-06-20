@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wc2026-tracker-v8';
+const CACHE_NAME = 'wc2026-tracker-v9';
 const APP_SHELL = [
   './',
   './index.html',
