@@ -291,6 +291,47 @@ li.playing-row .live-badge {
   padding: 0.6rem;
   resize: vertical;
 }
+
+/* Group standings */
+.standings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.standings-head h2 { margin: 0; font-size: 1.05rem; color: var(--accent); }
+.standings-select {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--fg);
+  background: rgba(255,255,255,0.1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+}
+.standings-table-wrap { overflow-x: auto; }
+.standings-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.standings-table th, .standings-table td {
+  padding: 0.45rem 0.4rem;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.standings-table th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  opacity: 0.7;
+  font-weight: 600;
+}
+.standings-team-head, .standings-team { text-align: left; white-space: normal; }
+.standings-team { display: flex; align-items: center; font-weight: 600; }
+.standings-pos { opacity: 0.7; font-weight: 600; }
+.standings-pts { font-weight: 700; color: var(--accent); }
+tr.standings-qualify { background: rgba(212,175,55,0.08); }
+tr.standings-row:last-child td { border-bottom: none; }
+.standings-note { font-size: 0.78rem; opacity: 0.7; margin: 0.6rem 0 0; }
 </style>
 </head>
 <body>
@@ -331,6 +372,31 @@ li.playing-row .live-badge {
 </section>
 
 <button id="refresh-btn" type="button">Refresh schedule</button>
+
+<section class="schedule-section standings-section" id="standings-section">
+<div class="standings-head">
+<h2>Group Standings</h2>
+<select id="standings-group-select" class="standings-select" aria-label="Select group"></select>
+</div>
+<div class="standings-table-wrap">
+<table class="standings-table">
+<thead>
+<tr>
+<th class="standings-pos">#</th>
+<th class="standings-team-head">Team</th>
+<th class="standings-num">P</th>
+<th class="standings-num">W</th>
+<th class="standings-num">D</th>
+<th class="standings-num">L</th>
+<th class="standings-num">GD</th>
+<th class="standings-num">Pts</th>
+</tr>
+</thead>
+<tbody id="standings-body"></tbody>
+</table>
+</div>
+<p class="standings-note">Top 2 in each group advance to the knockout stage.</p>
+</section>
 
 <section class="schedule-section notify-section" id="notify-section">
 <div class="section-head"><h2>Notifications</h2></div>
